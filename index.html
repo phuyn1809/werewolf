@@ -90,15 +90,15 @@
         <section id="tab-player" class="space-y-6 max-w-md mx-auto w-full">
             <div id="player-select-box" class="bg-gothic-800/90 border border-gothic-blood/50 rounded-2xl p-5 space-y-4 shadow-2xl backdrop-blur-md">
                 <div class="text-center space-y-1">
-                    <h2 class="font-heading text-xl sm:text-2xl font-bold text-gothic-gold">XÁC NHẬN BÓC BÀI</h2>
-                    <p class="text-slate-300 text-xs">Chọn đúng tên của bạn trong Group Chat Instagram để mở thẻ bí mật</p>
+                    <h2 id="player-select-title" class="font-heading text-xl sm:text-2xl font-bold text-gothic-gold">XÁC NHẬN BÓC BÀI</h2>
+                    <p id="player-select-desc" class="text-slate-300 text-xs">Chọn đúng tên của bạn trong Group Chat Instagram để mở thẻ bí mật</p>
                 </div>
 
                 <div id="no-game-alert" class="hidden bg-amber-950/40 border border-amber-800/60 rounded-xl p-3 text-xs text-amber-200 text-center">
                     <i class="fa-solid fa-triangle-exclamation text-amber-400 mr-1"></i> Chưa có ván đấu nào! Nhờ Quản Trò tạo ván và gửi lại link nhé.
                 </div>
 
-                <div class="space-y-2">
+                <div id="select-player-wrap" class="space-y-2">
                     <label class="block text-xs font-semibold text-slate-200">Tên người chơi của bạn:</label>
                     <select id="select-player-name" class="w-full bg-black/70 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-gothic-gold">
                         <!-- Dynamic Player options -->
@@ -229,6 +229,9 @@
                     <div class="flex items-center gap-2 flex-wrap">
                         <button onclick="app.copyGameLink()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md">
                             <i class="fa-solid fa-share-nodes"></i> Copy Link Cho Group Chat
+                        </button>
+                        <button onclick="app.openPersonalLinks()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md">
+                            <i class="fa-solid fa-user-lock"></i> Link Riêng Từng Người
                         </button>
                         <button onclick="app.nav('setup-modal')" class="bg-gothic-brightRed hover:bg-gothic-crimson text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md">
                             <i class="fa-solid fa-gear"></i> Tạo Ván / Sửa Char
@@ -576,6 +579,21 @@
             parseURLState() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const stateData = urlParams.get('g');
+
+                // Link riêng từng người (?p=...) - chỉ chứa vai của đúng 1 người
+                this.personal = null;
+                const personalData = urlParams.get('p');
+                if (personalData) {
+                    try {
+                        this.personal = this.decodePersonal(personalData);
+                        (this.personal.customRoles || []).forEach(r => {
+                            if (!this.roles.find(x => x.id === r.id)) this.roles.push(r);
+                        });
+                    } catch (e) {
+                        console.error("Failed to parse personal link", e);
+                    }
+                }
+
                 if (stateData) {
                     try {
                         const decoded = this.decodeGame(stateData);
@@ -591,7 +609,7 @@
                     }
                 }
 
-                if (!this.currentGame) {
+                if (!this.currentGame && !this.personal) {
                     const localSavedGame = localStorage.getItem('ww_current_game');
                     if (localSavedGame) {
                         this.currentGame = JSON.parse(localSavedGame);
@@ -678,6 +696,135 @@
                 document.getElementById('link-fallback-close').onclick = () => modal.remove();
             }
 
+            // ===== LINK RIÊNG TỪNG NGƯỜI =====
+            encodePersonal(player) {
+                const role = this.roles.find(r => r.id === player.roleId);
+                const defaultIds = new Set(DEFAULT_ROLES.map(r => r.id));
+                let allies = null;
+                if (role && role.team === 'werewolf') {
+                    allies = this.currentGame.players.filter(p => {
+                        const r = this.roles.find(item => item.id === p.roleId);
+                        return r && r.team === 'werewolf';
+                    }).map(p => p.name);
+                }
+                const compact = {
+                    v: 3,
+                    n: player.name,
+                    r: player.roleId,
+                    a: allies,
+                    cr: (role && !defaultIds.has(role.id)) ? [role] : []
+                };
+                return this.bytesToB64Url(new TextEncoder().encode(JSON.stringify(compact)));
+            }
+
+            decodePersonal(str) {
+                const data = JSON.parse(new TextDecoder().decode(this.b64UrlToBytes(str)));
+                if (data.v !== 3 || !data.n || !data.r) throw new Error('Link riêng không hợp lệ');
+                return { name: data.n, roleId: data.r, allies: data.a || null, customRoles: data.cr || [] };
+            }
+
+            buildPersonalLink(player) {
+                return `${window.location.origin}${window.location.pathname}?p=${this.encodePersonal(player)}`;
+            }
+
+            copyText(text) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    return navigator.clipboard.writeText(text).then(() => true).catch(() => this.legacyCopy(text));
+                }
+                return Promise.resolve(this.legacyCopy(text));
+            }
+
+            openPersonalLinks() {
+                if (!this.currentGame || !this.currentGame.players || this.currentGame.players.length === 0) {
+                    alert('Chưa có ván đấu nào! Hãy tạo ván mới trước.');
+                    return;
+                }
+
+                const old = document.getElementById('personal-links-modal');
+                if (old) old.remove();
+
+                const links = this.currentGame.players.map(p => ({ name: p.name, url: this.buildPersonalLink(p) }));
+
+                const overlay = document.createElement('div');
+                overlay.id = 'personal-links-modal';
+                overlay.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:12px;';
+
+                const panel = document.createElement('div');
+                panel.style.cssText = 'background:#0f172a;border:1px solid #334155;border-radius:16px;padding:16px;max-width:460px;width:100%;max-height:90vh;display:flex;flex-direction:column;color:#e2e8f0;font-size:13px;';
+                overlay.appendChild(panel);
+
+                const title = document.createElement('p');
+                title.style.cssText = 'font-weight:800;font-size:15px;margin-bottom:4px;color:#fbbf24;';
+                title.textContent = '🔐 Link riêng từng người';
+                panel.appendChild(title);
+
+                const hint = document.createElement('p');
+                hint.style.cssText = 'color:#94a3b8;margin-bottom:10px;line-height:1.4;';
+                hint.textContent = 'Bấm Copy rồi nhắn riêng (DM) cho đúng người. Mỗi link chỉ mở được bài của chính người đó.';
+                panel.appendChild(hint);
+
+                const list = document.createElement('div');
+                list.style.cssText = 'overflow-y:auto;display:flex;flex-direction:column;gap:6px;flex:1;';
+                panel.appendChild(list);
+
+                links.forEach(item => {
+                    const row = document.createElement('div');
+                    row.style.cssText = 'display:flex;align-items:center;gap:6px;background:#020617;border:1px solid #1e293b;border-radius:10px;padding:6px 8px;';
+
+                    const nameEl = document.createElement('span');
+                    nameEl.style.cssText = 'flex:1;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+                    nameEl.textContent = item.name;
+                    row.appendChild(nameEl);
+
+                    if (navigator.share) {
+                        const shareBtn = document.createElement('button');
+                        shareBtn.textContent = 'Gửi';
+                        shareBtn.style.cssText = 'background:#334155;color:#fff;border:0;border-radius:8px;padding:6px 10px;font-weight:700;font-size:12px;';
+                        shareBtn.onclick = () => navigator.share({ title: 'Ma Sói - Thẻ bài của ' + item.name, url: item.url }).catch(() => {});
+                        row.appendChild(shareBtn);
+                    }
+
+                    const copyBtn = document.createElement('button');
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.style.cssText = 'background:#4f46e5;color:#fff;border:0;border-radius:8px;padding:6px 12px;font-weight:700;font-size:12px;min-width:84px;';
+                    copyBtn.onclick = () => {
+                        this.copyText(item.url).then(ok => {
+                            if (ok) {
+                                copyBtn.textContent = '✓ Đã copy';
+                                copyBtn.style.background = '#059669';
+                            } else {
+                                this.showLinkFallback(item.url);
+                            }
+                        });
+                    };
+                    row.appendChild(copyBtn);
+                    list.appendChild(row);
+                });
+
+                const footer = document.createElement('div');
+                footer.style.cssText = 'display:flex;gap:8px;margin-top:10px;justify-content:flex-end;flex-wrap:wrap;';
+
+                const allBtn = document.createElement('button');
+                allBtn.textContent = 'Copy tất cả (Tên: link)';
+                allBtn.style.cssText = 'background:#334155;color:#fff;border:0;border-radius:10px;padding:8px 12px;font-weight:700;font-size:12px;';
+                allBtn.onclick = () => {
+                    const text = links.map(l => `${l.name}: ${l.url}`).join('\n');
+                    this.copyText(text).then(ok => {
+                        if (ok) { allBtn.textContent = '✓ Đã copy tất cả'; } else { this.showLinkFallback(text); }
+                    });
+                };
+                footer.appendChild(allBtn);
+
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = 'Đóng';
+                closeBtn.style.cssText = 'background:#7f1d1d;color:#fff;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-size:12px;';
+                closeBtn.onclick = () => overlay.remove();
+                footer.appendChild(closeBtn);
+                panel.appendChild(footer);
+
+                document.body.appendChild(overlay);
+            }
+
             // Navigation Controller
             nav(tabName) {
                 if (tabName === 'setup-modal') {
@@ -694,11 +841,40 @@
                 document.getElementById(`tab-${tabName}`).classList.remove('hidden');
                 const activeBtn = document.getElementById(`tab-btn-${tabName}`);
                 if (activeBtn) activeBtn.className = "px-3 py-1.5 rounded-xl font-bold transition-all bg-gothic-blood text-white shadow-md";
+
+                // Link riêng: luôn ẩn tab Quản Trò (nav() ghi đè class nên phải ẩn lại ở đây)
+                const gmBtnEl = document.getElementById('tab-btn-gm');
+                if (gmBtnEl) gmBtnEl.classList.toggle('hidden', !!this.personal);
+            }
+
+            applyPersonalUI() {
+                const wrap = document.getElementById('select-player-wrap');
+                const title = document.getElementById('player-select-title');
+                const desc = document.getElementById('player-select-desc');
+                const gmBtn = document.getElementById('tab-btn-gm');
+                const noGameAlert = document.getElementById('no-game-alert');
+                if (!wrap || !title || !desc) return;
+                if (this.personal) {
+                    wrap.classList.add('hidden');
+                    if (noGameAlert) noGameAlert.classList.add('hidden');
+                    if (gmBtn) gmBtn.classList.add('hidden');
+                    title.textContent = 'THẺ BÀI CỦA BẠN';
+                    desc.textContent = 'Xin chào ' + this.personal.name + '! Đây là link riêng của bạn, đừng gửi cho ai nhé.';
+                    this.nav('player');
+                } else {
+                    wrap.classList.remove('hidden');
+                    if (gmBtn) gmBtn.classList.remove('hidden');
+                    title.textContent = 'XÁC NHẬN BÓC BÀI';
+                    desc.textContent = 'Chọn đúng tên của bạn trong Group Chat Instagram để mở thẻ bí mật';
+                }
             }
 
             updateUIState() {
+                this.applyPersonalUI();
                 const noGameAlert = document.getElementById('no-game-alert');
-                if (!this.currentGame || !this.currentGame.players || this.currentGame.players.length === 0) {
+                if (this.personal) {
+                    if (noGameAlert) noGameAlert.classList.add('hidden');
+                } else if (!this.currentGame || !this.currentGame.players || this.currentGame.players.length === 0) {
                     if (noGameAlert) noGameAlert.classList.remove('hidden');
                 } else {
                     if (noGameAlert) noGameAlert.classList.add('hidden');
@@ -743,6 +919,13 @@
             }
 
             revealRole() {
+                // Chế độ link riêng: không cần chọn tên
+                if (this.personal) {
+                    const r = this.roles.find(x => x.id === this.personal.roleId) || DEFAULT_ROLES[DEFAULT_ROLES.length - 1];
+                    this.showCard(this.personal.name, r, this.personal.allies);
+                    return;
+                }
+
                 const playerName = document.getElementById('select-player-name').value;
                 if (!playerName || !this.currentGame) {
                     alert('Chưa chọn tên người chơi hoặc ván chưa bắt đầu!');
@@ -754,33 +937,38 @@
 
                 const roleObj = this.roles.find(r => r.id === player.roleId) || DEFAULT_ROLES[DEFAULT_ROLES.length - 1];
 
+                let allies = null;
+                if (roleObj.team === 'werewolf') {
+                    allies = this.currentGame.players.filter(p => {
+                        const r = this.roles.find(item => item.id === p.roleId);
+                        return r && r.team === 'werewolf';
+                    }).map(p => p.name);
+                }
+                this.showCard(player.name, roleObj, allies);
+            }
+
+            showCard(playerName, roleObj, allies) {
                 document.getElementById('player-select-box').classList.add('hidden');
                 document.getElementById('player-card-box').classList.remove('hidden');
                 document.getElementById('player-card-box').classList.add('flex');
 
-                document.getElementById('card-player-name').innerText = player.name;
-                document.getElementById('role-title').innerText = roleObj.name.toUpperCase();
-                document.getElementById('role-description').innerText = roleObj.desc;
+                document.getElementById('card-player-name').innerText = playerName;
+                document.getElementById('role-title').innerText = (roleObj.name || '').toUpperCase();
+                document.getElementById('role-description').innerText = roleObj.desc || '';
 
                 const teamBadge = document.getElementById('role-badge-team');
-                teamBadge.innerText = roleObj.teamName;
-                teamBadge.className = `inline-block px-3 py-1 rounded-full text-[11px] font-bold uppercase mb-2 ${roleObj.badgeColor}`;
+                teamBadge.innerText = roleObj.teamName || '';
+                teamBadge.className = `inline-block px-3 py-1 rounded-full text-[11px] font-bold uppercase mb-2 ${roleObj.badgeColor || ''}`;
 
                 const iconBox = document.getElementById('role-icon-box');
                 iconBox.innerHTML = `<i class="fa-solid ${roleObj.icon || 'fa-user'}"></i>`;
-                iconBox.className = `w-16 h-16 rounded-full border-2 flex items-center justify-center mx-auto text-3xl mb-2 shadow-lg ${roleObj.bgColor} ${roleObj.color}`;
+                iconBox.className = `w-16 h-16 rounded-full border-2 flex items-center justify-center mx-auto text-3xl mb-2 shadow-lg ${roleObj.bgColor || ''} ${roleObj.color || ''}`;
 
-                // WEREWOLF SYNERGY: If Werewolf, show all fellow wolves
+                // WEREWOLF SYNERGY: nếu là Sói thì hiện đồng đội
                 const alliesBox = document.getElementById('werewolf-allies-box');
                 const alliesList = document.getElementById('werewolf-allies-list');
-
-                if (roleObj.team === 'werewolf') {
-                    const wolfPlayers = this.currentGame.players.filter(p => {
-                        const r = this.roles.find(item => item.id === p.roleId);
-                        return r && r.team === 'werewolf';
-                    }).map(p => p.name);
-
-                    alliesList.innerText = wolfPlayers.join(', ');
+                if (allies && allies.length) {
+                    alliesList.innerText = allies.join(', ');
                     alliesBox.classList.remove('hidden');
                 } else {
                     alliesBox.classList.add('hidden');
@@ -1000,7 +1188,7 @@
                 document.getElementById('gm-content').classList.remove('hidden');
                 this.nav('gm');
 
-                alert('🎉 Tạo ván mới thành công! Bây giờ bạn hãy bấm "Copy Link Cho Group Chat" để gửi vào Instagram.');
+                alert('🎉 Tạo ván mới thành công! Bấm "Link Riêng Từng Người" để nhắn riêng bài cho từng người chơi (an toàn nhất), hoặc "Copy Link Cho Group Chat" nếu muốn gửi chung.');
             }
 
             // Custom Character CRUD Management
