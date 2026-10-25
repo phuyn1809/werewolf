@@ -494,7 +494,7 @@
         class WerewolfInstaApp {
             constructor() {
                 this.roles = this.loadStoredRoles();
-                this.currentGame = null; // { pin: '1234', players: [{ name, roleId, isAlive, note }], roleCounts: {} }
+                this.currentGame = null; // { pin: '1909', players: [{ name, roleId, isAlive, note }], roleCounts: {} }
                 this.editingCharId = null;
                 this.selectedRolesInSetup = {};
                 this.isGMUnlocked = false;
@@ -602,7 +602,7 @@
             // GM Lock/Unlock
             unlockGM() {
                 const enteredPin = document.getElementById('gm-pin-input').value;
-                const correctPin = (this.currentGame && this.currentGame.pin) ? this.currentGame.pin : '1234';
+                const correctPin = (this.currentGame && this.currentGame.pin) ? this.currentGame.pin : '1909';
 
                 if (enteredPin === correctPin) {
                     this.isGMUnlocked = true;
@@ -844,7 +844,7 @@
 
             generateGame() {
                 const text = document.getElementById('setup-players-text').value;
-                const pin = document.getElementById('setup-gm-pin').value.trim() || '1234';
+                const pin = document.getElementById('setup-gm-pin').value.trim() || '1909';
                 const names = text.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
 
                 let totalRoles = 0;
