@@ -62,7 +62,7 @@
     <header class="border-b border-gothic-blood/50 bg-black/80 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center flex-wrap gap-2">
             <div class="flex items-center gap-2 cursor-pointer" onclick="app.nav('player')">
-                <i class="fa-solid fa-wolf-pack-battalion text-2xl text-gothic-crimson"></i>
+                <i class="fa-solid fa-paw text-2xl text-gothic-crimson"></i>
                 <h1 class="font-heading text-lg sm:text-xl font-extrabold tracking-wider bg-gradient-to-r from-gothic-goldLight via-gothic-gold to-gothic-crimson bg-clip-text text-transparent uppercase">
                     MA SÓI
                 </h1>
@@ -148,7 +148,7 @@
                             <!-- Special Werewolf Allies Section -->
                             <div id="werewolf-allies-box" class="hidden bg-rose-950/90 border border-rose-800 p-2.5 rounded-xl text-left text-xs space-y-1">
                                 <span class="font-bold text-rose-300 block flex items-center gap-1">
-                                    <i class="fa-solid fa-wolf-pack-battalion"></i> Đồng minh Sói cùng phe với bạn:
+                                    <i class="fa-solid fa-paw"></i> Đồng minh Sói cùng phe với bạn:
                                 </span>
                                 <div id="werewolf-allies-list" class="text-slate-100 font-bold pl-2">
                                     <!-- Dynamic Wolf allies -->
@@ -395,7 +395,7 @@
                 name: 'Ma Sói',
                 team: 'werewolf',
                 teamName: 'Phe Ma Sói',
-                icon: 'fa-wolf-pack-battalion',
+                icon: 'fa-paw',
                 color: 'text-rose-500',
                 bgColor: 'bg-rose-950/40 border-rose-800/60',
                 badgeColor: 'bg-rose-900 text-rose-200',
@@ -513,7 +513,13 @@
             // Storage for Custom Characters
             loadStoredRoles() {
                 const saved = localStorage.getItem('ww_custom_roles');
-                return saved ? JSON.parse(saved) : [...DEFAULT_ROLES];
+                if (!saved) return [...DEFAULT_ROLES];
+                try {
+                    // Sửa icon lỗi cũ (fa-wolf-pack-battalion là icon Brands nên không hiện được với fa-solid)
+                    return JSON.parse(saved.replace(/fa-wolf-pack-battalion/g, 'fa-paw'));
+                } catch (e) {
+                    return [...DEFAULT_ROLES];
+                }
             }
 
             saveStoredRoles() {
@@ -573,6 +579,7 @@
                 if (stateData) {
                     try {
                         const decoded = this.decodeGame(stateData);
+                        if (decoded.customRoles) decoded.customRoles.forEach(r => { if (r.icon === 'fa-wolf-pack-battalion') r.icon = 'fa-paw'; });
                         // Gộp char tự tạo từ link (chỉ trong bộ nhớ, không ghi đè kho của người xem)
                         (decoded.customRoles || []).forEach(r => {
                             if (!this.roles.find(x => x.id === r.id)) this.roles.push(r);
@@ -1080,7 +1087,7 @@
                     const newRole = {
                         id: 'custom_' + Date.now(),
                         name, team, teamName, desc, badgeColor, color, bgColor,
-                        icon: team === 'werewolf' ? 'fa-wolf-pack-battalion' : 'fa-user-shield'
+                        icon: team === 'werewolf' ? 'fa-paw' : 'fa-user-shield'
                     };
                     this.roles.push(newRole);
                 }
