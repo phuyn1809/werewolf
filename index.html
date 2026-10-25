@@ -326,7 +326,9 @@
                                 Cần chọn: <span id="setup-roles-selected-count" class="text-gothic-gold font-bold">0</span> / <span id="setup-players-count" class="text-white font-bold">0</span> Char
                             </span>
                         </div>
-                        <div id="setup-roles-picker" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-56 overflow-y-auto pr-1">
+                        <input type="text" id="setup-role-search" placeholder="Tìm char theo tên hoặc phe..." oninput="app.renderSetupRolePicker()"
+                            class="w-full bg-black/60 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-gothic-gold placeholder-slate-500">
+                        <div id="setup-roles-picker" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
                             <!-- Dynamic Role Picker -->
                         </div>
                     </div>
@@ -342,6 +344,16 @@
                         <h4 class="text-xs font-bold text-slate-300 uppercase">Thêm / Chỉnh Sửa Char Nhân Vật</h4>
                         <button onclick="app.openEditCharModal(null)" class="bg-emerald-950 border border-emerald-700 text-emerald-300 hover:bg-emerald-900 px-3 py-1 rounded-lg text-xs font-bold">
                             + Thêm Char Mới
+                        </button>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 bg-black/40 border border-slate-800 rounded-xl p-2.5">
+                        <span class="text-[11px] text-slate-300 flex-1 min-w-[140px]">Sao lưu danh sách char để không bị mất khi đổi domain / xóa dữ liệu trình duyệt:</span>
+                        <button onclick="app.openBackupModal('export')" class="bg-indigo-950 border border-indigo-700 text-indigo-200 hover:bg-indigo-900 px-3 py-1 rounded-lg text-xs font-bold">
+                            <i class="fa-solid fa-share-nodes mr-1"></i> Sao lưu
+                        </button>
+                        <button onclick="app.openBackupModal('import')" class="bg-amber-950 border border-amber-700 text-amber-200 hover:bg-amber-900 px-3 py-1 rounded-lg text-xs font-bold">
+                            <i class="fa-solid fa-shuffle mr-1"></i> Khôi phục
                         </button>
                     </div>
 
@@ -371,7 +383,8 @@
                     <select id="edit-char-team" class="w-full bg-black/60 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-gothic-gold">
                         <option value="werewolf">Phe Ma Sói (Werewolf)</option>
                         <option value="villager">Phe Dân Làng (Villager)</option>
-                        <option value="neutral">Phe Thứ 3 / Đơn Độc (Neutral)</option>
+                        <option value="neutral">Phe 3 / Đơn Độc (Neutral)</option>
+                        <option value="switch">Đổi Phe</option>
                     </select>
                 </div>
 
@@ -393,106 +406,142 @@
     <script>
         // Default Custom Roles Database
         const DEFAULT_ROLES = [
-            {
-                id: 'wolf_normal',
-                name: 'Ma Sói',
-                team: 'werewolf',
-                teamName: 'Phe Ma Sói',
-                icon: 'fa-paw',
-                color: 'text-rose-500',
-                bgColor: 'bg-rose-950/40 border-rose-800/60',
-                badgeColor: 'bg-rose-900 text-rose-200',
-                desc: 'Mỗi đêm cùng các Ma Sói khác thức dậy thống nhất cắn chết 1 người chơi.'
-            },
-            {
-                id: 'wolf_king',
-                name: 'Sói Chúa',
-                team: 'werewolf',
-                teamName: 'Phe Ma Sói',
-                icon: 'fa-crown',
-                color: 'text-rose-400',
-                bgColor: 'bg-rose-950/50 border-rose-700/80',
-                badgeColor: 'bg-rose-950 text-rose-300 border border-rose-700',
-                desc: 'Có đầy đủ quyền hạn của Ma Sói. Một lần trong cả ván chơi có thể cắn chết 2 người trong 1 đêm.'
-            },
-            {
-                id: 'seer',
-                name: 'Tiên Tri',
-                team: 'villager',
-                teamName: 'Phe Dân Làng',
-                icon: 'fa-eye',
-                color: 'text-sky-400',
-                bgColor: 'bg-sky-950/40 border-sky-800/60',
-                badgeColor: 'bg-sky-900 text-sky-200',
-                desc: 'Mỗi đêm chọn 1 người chơi để soi và biết chính xác người đó là Sói hay Dân.'
-            },
-            {
-                id: 'guard',
-                name: 'Bảo Vệ',
-                team: 'villager',
-                teamName: 'Phe Dân Làng',
-                icon: 'fa-shield-halved',
-                color: 'text-amber-400',
-                bgColor: 'bg-amber-950/40 border-amber-800/60',
-                badgeColor: 'bg-amber-900 text-amber-200',
-                desc: 'Mỗi đêm chọn 1 người để bảo vệ khỏi cú cắn của Sói (không bảo vệ 1 người 2 đêm liên tiếp).'
-            },
-            {
-                id: 'witch',
-                name: 'Phù Thủy',
-                team: 'villager',
-                teamName: 'Phe Dân Làng',
-                icon: 'fa-flask-vial',
-                color: 'text-purple-400',
-                bgColor: 'bg-purple-950/40 border-purple-800/60',
-                badgeColor: 'bg-purple-900 text-purple-200',
-                desc: 'Sở hữu 1 bình Thuốc Độc và 1 bình Thuốc Cứu. Mỗi bình chỉ được sử dụng 1 lần trong ván.'
-            },
-            {
-                id: 'hunter',
-                name: 'Thợ Săn',
-                team: 'villager',
-                teamName: 'Phe Dân Làng',
-                icon: 'fa-crosshairs',
-                color: 'text-emerald-400',
-                bgColor: 'bg-emerald-950/40 border-emerald-800/60',
-                badgeColor: 'bg-emerald-900 text-emerald-200',
-                desc: 'Khi bị chết (bị Sói cắn hoặc bị treo cổ), Thợ Săn lập tức được quyền kéo theo 1 người nữa chết cùng.'
-            },
-            {
-                id: 'cupid',
-                name: 'Cupid',
-                team: 'villager',
-                teamName: 'Phe Dân Làng',
-                icon: 'fa-heart',
-                color: 'text-pink-400',
-                bgColor: 'bg-pink-950/40 border-pink-800/60',
-                badgeColor: 'bg-pink-900 text-pink-200',
-                desc: 'Đêm thứ 1 ghép đôi 2 người chơi bất kỳ thành Uyên Ương. Nếu 1 người chết, người kia chết theo.'
-            },
-            {
-                id: 'jester',
-                name: 'Thằng Hề (Chủ Báo)',
-                team: 'neutral',
-                teamName: 'Phe Thứ 3',
-                icon: 'fa-masks-theater',
-                color: 'text-yellow-400',
-                bgColor: 'bg-yellow-950/40 border-yellow-800/60',
-                badgeColor: 'bg-yellow-900 text-yellow-200',
-                desc: 'Mục tiêu: Làm sao cho Dân Làng nghi ngờ và biểu quyết TREO CỔ mình vào ban ngày để thắng đơn độc.'
-            },
-            {
-                id: 'villager',
-                name: 'Dân Làng',
-                team: 'villager',
-                teamName: 'Phe Dân Làng',
-                icon: 'fa-house-user',
-                color: 'text-slate-300',
-                bgColor: 'bg-slate-900/60 border-slate-700/60',
-                badgeColor: 'bg-slate-800 text-slate-300',
-                desc: 'Không có năng lực đặc biệt. Ban ngày lập luận và suy đoán để tìm ra Sói trà trộn.'
-            }
+            {"id": "soi", "name": "Sói", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Cắn số dân = sói thì thắng."},
+            {"id": "soi_con", "name": "Sói con", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Sói con chết bằng bất kì hình thức nào, sói được giết 2 người vào đêm sau."},
+            {"id": "soi_tre", "name": "Sói trẻ", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Kéo một người chết theo nếu sói trẻ chết."},
+            {"id": "soi_nguyen", "name": "Sói nguyền", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Nguyền 1 người bất kì thành sói. Không dùng chức năng cùng đêm với sói."},
+            {"id": "soi_dau_dan", "name": "Sói đầu đàn", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Có 2 cách chơi: ▸ Trong một đêm bất kì được cắn 2 người. ▸ Nếu có sói chết vào ban ngày, đêm sau người bị cắn sẽ không chết mà thành sói."},
+            {"id": "soi_quy", "name": "Sói quỷ", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Nguyền 1 người thành sói, nếu là char có chức năng vẫn dùng được chức năng gốc. Không dùng chức năng cùng đêm với sói."},
+            {"id": "phap_su", "name": "Pháp sư", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Yểm một người, người đó bị khoanh/soi ra ác. Cáo khoanh thiện. Không dùng chức năng cùng đêm với sói."},
+            {"id": "soi_dien", "name": "Sói điên", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Chọn kích hoạt chức năng vào buổi sáng và đêm sau nếu vệ vệ trúng người sói cắn thì cả vệ và người được vệ đều chết."},
+            {"id": "soi_tri", "name": "Sói tri", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Soi chức năng có hint của dân, soi trúng char có hint sẽ được báo char đó có hint."},
+            {"id": "soi_ve", "name": "Sói vệ", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Vệ được 1 người bị treo kể cả bản thân. Chức năng sáng."},
+            {"id": "soi_ac_mong", "name": "Sói ác mộng", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Chức năng dùng 2 lần, chọn 1 người vào ban ngày để khoá chức năng của họ vào đêm sau."},
+            {"id": "phan_boi", "name": "Phản bội", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Tri/cáo soi ra thiện, có thể cắn dân."},
+            {"id": "nguoi_soi", "name": "Người sói", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Tri/cáo soi ra thiện."},
+            {"id": "soi_trum", "name": "Sói trùm", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Còn sống thì mỗi đêm sói đều được cắn 2 người."},
+            {"id": "soi_anh_em", "name": "Sói anh em", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Đêm 2 sói anh sẽ được add vào group sói. Sau khi sói anh chết, sói em sẽ được giết 1 người và add vào gr sói vào đêm sau. Trước khi sói anh chết, tri/cáo/thám không soi ra được sói em."},
+            {"id": "soi_chieu_hon", "name": "Sói chiêu hồn", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Hồi được 1 sói đã chết, sói được hồi sẽ trở thành sói thường."},
+            {"id": "soi_kich", "name": "Sói kịch", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Mỗi đêm chọn một người, nếu người đó chết sẽ được thay cách chết của họ. ▸ Pháp y khám xác sẽ được báo theo kịch sói viết. Nếu xác là sói cắn nhưng được viết cáo phó là do phe khác sẽ được quản báo theo cáo phó. ▸ Lực vệ người bị viết cáo phó cũng sẽ được báo theo cáo phó."},
+            {"id": "thao_tung", "name": "Thao túng", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Mỗi đêm chọn 1 người để điều khiển chức năng của họ."},
+            {"id": "soi_phan_tach", "name": "Sói phân tách", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Chọn 1 người để ràng buộc, số lượng sói sẽ tăng lên 1 nhưng người được chọn vẫn tính là char gốc và không biết mình bị ràng buộc. Sói chết người bị ràng buộc chết theo, người bị ràng buộc chết thì quản sẽ báo ai là sói phân tách. Có thể thay đổi người bị ràng buộc."},
+            {"id": "soi_lua_dao", "name": "Sói lừa đảo", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Vào ban ngày chọn 1 người, nếu người đó chết (trừ khi sói cắn) sẽ giả danh thành họ. Các chức năng dân có hint sẽ check sói lừa đảo thành char giả danh."},
+            {"id": "doc_duoc", "name": "Độc dược", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Chức năng 2 lần. Chọn 1 người để đầu độc vào ban đêm, đêm sau sói có thể cắn họ xuyên lớp vệ."},
+            {"id": "soi_mo_ho", "name": "Sói mơ hồ", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Chức năng 2 lần. Có thể ẩn chức năng của người đã chết trong đêm với đồng và sói có thể biết người chết có chức năng gì."},
+            {"id": "soi_mu", "name": "Sói mù", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Mỗi đêm chọn 2 người và được xem họ thuộc phe nào. Nếu sống đến cuối thì sẽ trở thành sói thường."},
+            {"id": "soi_lay_nhiem", "name": "Sói lây nhiễm", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Bất kì char dân nào chọn trúng sói lây nhiễm sẽ chết. Thuỷ cũng không cứu được."},
+            {"id": "nguyen_rua", "name": "Nguyền rủa", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Chọn 1 người để gieo lời nguyền, người đó sẽ mất chức năng vĩnh viễn."},
+            {"id": "soi_bang", "name": "Sói băng", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-snowflake", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Mỗi đêm đóng băng 1 người. Người bị đóng băng sẽ bị khoá chức năng nhưng sẽ không chết nếu bị giết và được quản báo vào sáng hôm sau. Không được add vào group sói.", "noWolfChat": true},
+            {"id": "soi_du_bi", "name": "Sói dự bị", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Khi có 1 sói chết, sói dự bị sẽ trở thành con sói đó."},
+            {"id": "soi_hoa_hinh", "name": "Sói hoá hình", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Chọn 1 người, tất cả các chức năng check trúng sói hoá hình ra người bị chọn."},
+            {"id": "soi_phan_don", "name": "Sói phản đòn", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Chức năng 2 lần. Chọn 1 người, nếu đêm đó người đó dùng chức năng lên sói phản đòn, sói sẽ biết chức năng của người đó"},
+            {"id": "soi_danh_dau", "name": "Sói đánh dấu", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Mỗi đêm đánh dấu 1 người, đêm sau nếu sói cắn người đó thì không cứu được"},
+            {"id": "soi_gia_chet", "name": "Sói giả chết", "team": "werewolf", "teamName": "Phe Sói", "icon": "fa-paw", "color": "text-rose-500", "bgColor": "bg-rose-950/40 border-rose-800/60", "badgeColor": "bg-rose-900 text-rose-200", "desc": "Nếu bị treo cổ có thể kích hoạt chức năng. Quản vẫn báo chết nhưng sói giả chết vẫn sống. Đêm sau sói không được cắn ai."},
+            {"id": "sat_nhan", "name": "Sát nhân", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Bắn hết sói và phe 3 khác thì sát thắng. Chỉ bắn phe 3 khác & sói (tuỳ quản vì sát cũng có thể giết cả dân), sói không cắn được sát. Tri/cáo khoanh ác."},
+            {"id": "sat_thu", "name": "Sát thủ", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm chọn 1 người để đoán char của người đó, nếu đoán trúng thì người đó chết. Tri/cáo khoanh ác. Sói không cắn được sát thủ. Thắng 1:1."},
+            {"id": "couple", "name": "Couple", "team": "neutral", "teamName": "Phe 3", "icon": "fa-heart", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Thắng nếu chỉ còn dân với số lượng 2:2, cupid còn sống trong ván thì thắng 3:3. Còn phe 3 khác/sói dù số lượng bằng couple vẫn tiếp tục ván."},
+            {"id": "he", "name": "Hề", "team": "neutral", "teamName": "Phe 3", "icon": "fa-masks-theater", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Treo hề hề trắng, chết hết phe 3 và sói chỉ còn hề với dân thì hề thắng cùng dân."},
+            {"id": "cam", "name": "Câm", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm câm 1 người, câm hết người sống câm thắng."},
+            {"id": "hoa", "name": "Hoả", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm tẩm 2 người, có thể đốt hết số người bị tẩm trong đêm bất kì, chỉ được đốt 1 lần. Người bị tẩm nếu được đồng hồi thì sẽ không chết vì hoả đốt. Sói không cắn được hoả. Thắng 1:1."},
+            {"id": "sao", "name": "Sáo", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm thôi miên 2 người, thôi miên hết người sống sáo thắng."},
+            {"id": "con_do", "name": "Côn đồ", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Chọn 1 người làm đồng minh hoặc giết 1 người, nếu có đồng minh, côn đồ có thể giết người mỗi đêm, sói không cắn được côn đồ. Tri/cáo khoanh ác."},
+            {"id": "dong_pham", "name": "Đồng phạm", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Cùng phe với côn đồ nếu côn đồ chọn họ làm đồng minh. Nếu số vote hoà thì vote của côn đồ & đồng phạm thắng. Thắng nếu chỉ còn côn đồ và đồng phạm sống."},
+            {"id": "tin_tac", "name": "Tin tặc", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi ngày chọn 1 người bị kéo vào ảo ảnh, người bị kéo sáng hôm sau sẽ câm và chết sau thời gian treo giàn, không thể lộ chức năng với đồng và không được hồi. Sói không cắn được tin tặc. Thắng 1:1."},
+            {"id": "soi_trang", "name": "Sói trắng", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Có thể phản hoặc theo sói, thắng nếu chỉ còn 1:1 nếu phản, phản thì cắn sói cách đêm. Nếu theo sói, sói chết chỉ còn trắng, trắng không thể cắn dân."},
+            {"id": "dat_bom", "name": "Đặt bom", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm đặt bom vào một người, đêm sau bom nổ người đó chết, đặt bom hết người sống thì thắng. Sói không cắn được đặt bom. Tri/cáo khoanh ác."},
+            {"id": "ma_ca_rong", "name": "Ma cà rồng", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Chọn 1 người làm nạn nhân, nếu người đó bị nhiều vote treo thì lập tức treo giàn, không được biện hộ, sói không cắn được ma cà rồng. Thắng 1:1."},
+            {"id": "dracula", "name": "Dracula", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm chọn 1 người làm vợ, nếu kiếm được 3 vợ và cả 4 đều sống qua 1 đêm tiếp theo thì thắng."},
+            {"id": "an_thit", "name": "Ăn thịt", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm được ăn 1 người, hoặc nhịn đói để giết tối đa 5 người 1 đêm. Tri/cáo khoanh ác, Thắng 1:1. Sói không cắn được ăn thịt."},
+            {"id": "zombie", "name": "Zombie", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Có 2 cách chơi: ▸ Cứ cách 2 đêm cắn 1 người, người đó sẽ biến thành zombie vào cuối đêm sau. Tất cả zombie có thể cắn những người khác nhau. Tri/cáo khoanh ra ác. ▸ Mỗi đêm chọn 1 người để ăn não, người đó sẽ không bị vote. Ăn hết não người sống thì thắng. Tri/cáo khoanh ra ác."},
+            {"id": "yeu_tinh", "name": "Yêu tinh", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Có thể chuyển mục tiêu của sói sang 1 người khác."},
+            {"id": "du_con", "name": "Du côn", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Chọn 2 người, nếu hết ván 2 người chết và du côn còn sống thì thắng."},
+            {"id": "xac_uop", "name": "Xác ướp", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm chọn 1 người, đêm sau phải vote theo ý xác ướp."},
+            {"id": "quy_hut_mau", "name": "Quỷ hút máu", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm chọn 1 người, nếu là sói thì sói chết. Giết hết sói có thể giết những phe khác. Tri/cáo khoanh ra ác. Thắng 1:1."},
+            {"id": "chat_nhay", "name": "Chất nhầy", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm chọn 1 người xâm lấn, ai bị dính nhầy sẽ chết sau khi treo giàn. Thắng 1:1."},
+            {"id": "me_su", "name": "Mê sư", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm chọn 1 người mê hoặc, nếu mê sư chết người bị mê hoặc vào đêm đó sẽ chết thay. Thắng 1:1."},
+            {"id": "nhan_ngu", "name": "Nhân ngư", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm chọn 3 người chơi để mê hoặc, đêm sau có thể giết 2 trong 3 người bị mê hoặc vào đêm trước. Đêm sau có thể mê hoặc thêm 3 người mớ. Thắng 1:1."},
+            {"id": "tham_ma", "name": "Thám ma", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm chọn 2 người, nếu họ trái phe thì cả hai sẽ chết, cùng phe thì sẽ biết họ thuộc phe nào. Thắng 1:1."},
+            {"id": "chupacabra", "name": "Chupacabra", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Có 3 mạng khi bị sói cắn. Mỗi đêm ăn một người, ăn hết sói có thể ăn chức năng khác, thắng 1:5."},
+            {"id": "cuop_hon", "name": "Cướp hồn", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm chọn một người để cướp chức năng, sẽ nhận được chức năng khi người bị chọn chết. Chức năng cướp được sẽ dùng vào đêm sau. Thắng nếu cướp được 3 chức năng."},
+            {"id": "doi_menh", "name": "Đổi mệnh", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm chọn 2 người, nếu 1 trong 2 chết trong đêm thì cái chết chuyển sang người còn lại. Thắng 1:1."},
+            {"id": "bao_thu", "name": "Báo thù", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Đêm 1 chọn 1 người làm mục tiêu. Nếu người đó chết trước thì báo thù thắng."},
+            {"id": "san_dau", "name": "Săn đầu", "team": "neutral", "teamName": "Phe 3", "icon": "fa-skull", "color": "text-yellow-400", "bgColor": "bg-yellow-950/40 border-yellow-800/60", "badgeColor": "bg-yellow-900 text-yellow-200", "desc": "Mỗi đêm chọn 1 người làm con mồi. Thắng nếu người đó bị treo cổ. Chết vì nguyên nhân khác thì có thể chọn con mồi mới."},
+            {"id": "ki", "name": "Kĩ", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm chọn người để ngủ, người bị ngủ sẽ bị khoá chức năng đêm đó (ngủ sói trắng kể cả trắng theo phe sói, sói vẫn cắn được và ngược lại)."},
+            {"id": "dong", "name": "Đồng", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Nói chuyện với người chết, được hồi 1 người sống lại."},
+            {"id": "tham", "name": "Thám", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm xem 2 người và có thể biết họ có cùng phe không, nếu xem trúng đêm có người bị nguyền/ghép couple thì vẫn tính char gốc. Char được báo ngu."},
+            {"id": "cao", "name": "Cáo", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm khoanh 3 người, nếu có ác tiếp tục khoanh vào đêm sau, nếu khoanh 3 thiện thì mất chức năng, khoanh 3 người trong đó có 1 người bị nguyền ngay đêm khoanh và 2 thiện vẫn mất chức năng. Char được báo ngủ."},
+            {"id": "thuy", "name": "Thuỷ", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Có 2 bình giết và cứu, mỗi bình được dùng một lần, mỗi đêm được báo có ai chết. Char được báo ngủ."},
+            {"id": "tri", "name": "Tri", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm soi và biết ai ác hoặc thiện, soi trúng người bị nguyền cùng đêm vẫn được báo thiện. Char được báo ngủ."},
+            {"id": "boi", "name": "Bói", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm xem được 1 người thuộc phe nào (thuỷ, đồng, phe 3, những char sử dụng chức năng vào buổi sáng, quản ngục, sẽ không rõ phe)."},
+            {"id": "luc_si", "name": "Lực sĩ", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm chọn 1 người để vệ, nếu người được lực vệ bị giết trong đêm, lực sĩ sẽ biết được chức năng đã giết người mà lực sĩ vệ, sau thời gian treo giàn lực chết."},
+            {"id": "canh_sat", "name": "Cảnh sát", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm chọn 1 người để theo dõi, nếu người bị theo dõi trong đêm chết, quản sẽ cho cảnh sát 2 người trong list, và 1 trong 2 là nghi phạm giết người bị theo dõi."},
+            {"id": "quan_nguc", "name": "Quản ngục", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Giam 1 người để nói chuyện, người bị giam sẽ bị khoá chức năng. Có thể giết người bị giam."},
+            {"id": "nha_ngoai_cam", "name": "Nhà ngoại cảm", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Được chọn 2 người mỗi đêm, nếu 1 trong 2 đã giết người sẽ được quản báo."},
+            {"id": "mieng_rong", "name": "Miệng rộng", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Nếu chết được chọn một người để họ lộ chức năng gốc."},
+            {"id": "khai_menh", "name": "Khai mệnh", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Đưa cho 2 người khác 2 lá bài, họ bắt buộc phải khai chức năng gốc."},
+            {"id": "mat_ngu", "name": "Mất ngủ", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm biết được 1 trong 2 người sử dụng chức năng (có hint - sói - phe 3)"},
+            {"id": "ba_tuoc", "name": "Bá tước", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Tuỳ vào list chơi, vào đêm 1 chọn ra 1 nửa list và được biết trong đó có bao nhiêu sói."},
+            {"id": "ki_si", "name": "Kị sĩ", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Trước khi đến giờ treo, kị sĩ có thể nhận chức năng 1 lần và chọn 1 người, nếu chọn trúng sói thì sói chết và kết thúc ngày, chọn sai thì kị sĩ chết, không được hồi và tiếp tục treo giàn."},
+            {"id": "phap_y", "name": "Pháp y", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm khám nghiệm xác chết, người chết vì sói được quản báo 2 người, chết vì phe 3/dân được quản báo 3 người."},
+            {"id": "bac_si", "name": "Bác sĩ", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm chọn 2 người. Nếu 2 người đó là sói/dân - dân chết, sói/phe3 - sói chết, dân/phe3 - phe 3 chết. Không thuộc 3 cặp trên thì vẫn sống."},
+            {"id": "ke_gac_dem", "name": "Kẻ gác đêm", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm được biết ai được bảo vệ, có 3 lần vệ trong đêm."},
+            {"id": "nguoi_gan_co", "name": "Người gắn cờ", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Có 2 lần đổi người bị tấn công."},
+            {"id": "nguoi_hau", "name": "Người hầu", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Chọn một char hint để được biết hint từ họ, nếu người được chọn chết, người hầu mất chức năng."},
+            {"id": "bao_mong", "name": "Báo mộng", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm chọn 1 người, quản sẽ báo 2 chức năng, báo mộng tự phán đoán chức năng thật của người bị chọn"},
+            {"id": "vu_cong", "name": "Vũ công", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Có 2 chức năng mỗi đêm, được chọn làm gì 1 trong 2. Vệ hoặc khoá cnang người bị chọn."},
+            {"id": "con_bac", "name": "Con bạc", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm đoán phe của 1 người, thiện hoặc trật liên tiếp 2 đêm sẽ mất chức năng"},
+            {"id": "thay_bua", "name": "Thầy bùa", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm được biết ai bị sói cắn chết, có 4 lá bùa. Người bị dán bùa là sói hoặc phe 3 sẽ chết. Nếu 1 đêm dùng 2 bùa thì từ đêm 4 sẽ không biết sói cắn ai nữa."},
+            {"id": "chuong", "name": "Chuông", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm rung chuông 2 người. Nếu 1 trong 2 chết sẽ được biết chức năng của người còn lại."},
+            {"id": "vi_cam", "name": "Vĩ cầm", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm đàn vĩ cầm cho một người nếu có người chết, nếu người nghe đàn không khóc là phe trái dân."},
+            {"id": "ghi_chep", "name": "Ghi chép", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm chọn một người, sáng hôm sau biết người đó đã dùng chức năng lên ai đêm qua."},
+            {"id": "gac_cong", "name": "Gác cổng", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm vệ một người. Nếu vệ trúng người bị sói cắn quản sẽ báo vào sáng hôm sau đã chặn được lần tấn công."},
+            {"id": "soi_bong", "name": "Soi bóng", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm chọn một người, biết được người đó có bị nhắm tới hay không. (Bất kì chức năng luôn nhe)"},
+            {"id": "dau_chan", "name": "Dấu chân", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm theo dõi 1 người. Biết người đó có rời khỏi nhà hay không. Nếu có sẽ biết họ đến nơi có bao nhiêu người"},
+            {"id": "tri_mu", "name": "Tri mù", "team": "villager", "teamName": "Phe Dân (Có Hint)", "icon": "fa-eye", "color": "text-sky-400", "bgColor": "bg-sky-950/40 border-sky-800/60", "badgeColor": "bg-sky-900 text-sky-200", "desc": "Mỗi đêm được hỏi quản một câu hỏi yes/no, không được hỏi trực tiếp phe của người chơi khác."},
+            {"id": "tu", "name": "Tu", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Có 2 cách chơi: ▸ Vệ 1 người và người đó sẽ bất tử vào ban đêm. ▸ Mỗi đêm chọn 1 người để vệ, người được vệ được chắn tất cả chức năng"},
+            {"id": "ve", "name": "Vệ", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Mỗi đêm vệ 1 người bất kì. (Tuỳ quản vệ được cả nguyền.)"},
+            {"id": "xa", "name": "Xạ", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Có 2 viên đạn, được bắn vào buổi sáng."},
+            {"id": "muc", "name": "Mục", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Được vẩy nước 1 lần, vẩy trúng sói sói chết, vẩy trật mục chết."},
+            {"id": "cupid", "name": "Cupid", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-heart", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Ghép couple. Không được leak couple là ai."},
+            {"id": "tong_thong", "name": "Tổng thống", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Được tiết lộ chức năng ngay đêm đầu, nếu tổng thống chết thì phe dân thua"},
+            {"id": "gia_lang", "name": "Già làng", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Già làng có 2 mạng, nếu già làng chết phe dân mất chức năng."},
+            {"id": "ma", "name": "Ma", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Chết vào đêm 1, mỗi ngày cho dân hint phe 3 và sói."},
+            {"id": "san", "name": "Săn", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Ghim một người khi chết, người đó sẽ chết cùng."},
+            {"id": "nhan_ban", "name": "Nhân bản", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Chọn 1 người để nhân bản, người đó chết thì được hưởng chức năng."},
+            {"id": "tho_ren", "name": "Thợ rèn", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Có thể rèn 2 khiên & 1 kiếm. Rèn xong 1 vật phẩm đưa cho một người chơi khác mới được rèn cái mới. Rèn có thể bảo vệ 1 lần tấn công, kiếm có thể giết 1 người."},
+            {"id": "bay", "name": "Bẫy", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Đặt bẫy lên 1 người chơi để kích hoạt bẫy vào đêm sau. Nếu người bị đặt bẫy bị sói cắn trúng, sói yếu nhất trong ván sẽ chết (người bị đặt bẫy cũng chết). Nếu là phe 3/dân giết, cả 2 không chết và mất chức năng."},
+            {"id": "nu_tho_san", "name": "Nữ thợ săn", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Có thể loại 1 người chơi trong đêm."},
+            {"id": "nguoi_hoa_soi_lycan", "name": "Người hoá sói/lycan", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Là dân, tri/cáo khoanh ra ác"},
+            {"id": "kham_pha", "name": "Khám phá", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Mỗi đêm chọn 1 người, trúng sói sói chết, trật thì khám phá chết."},
+            {"id": "thang_ngoc", "name": "Thắng ngốc", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Bị treo giàn vẫn sống, nhưng sẽ mất khả năng bỏ phiếu."},
+            {"id": "oan_nhan", "name": "Oan nhân", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Sẽ chết nếu trong buổi sáng đó không treo ai, sẽ được chọn người bị treo vào sáng hôm sau."},
+            {"id": "hiep_si", "name": "Hiệp sĩ", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Nếu hiệp sĩ bị sói cắn, một sói sẽ bị bệnh và chết vào đêm sau, vào buổi sáng quản sẽ báo lý do sói chết."},
+            {"id": "tham_phan", "name": "Thẩm phán", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Chọn 1 buổi sáng và ngày đó sẽ treo giàn 2 người, sau khi lượt treo đầu kết thúc, lượt thứ 2 treo thẳng không biện hộ."},
+            {"id": "ti_hi", "name": "Ti hí", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Mỗi đêm chọn một người để biết họ phải sói không, nếu sói soi trúng ti hí thì ti hí chết."},
+            {"id": "duoc_si", "name": "Dược sĩ", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Có 2 bình mê hồn và hồi phục, bình mê hồn dùng cho người chết, họ có thể vote, bình hồi dùng nếu quăng trúng thuỷ thuỷ sẽ được dùng lại bình cứu. Mỗi bình dùng 1 lần."},
+            {"id": "nem_da", "name": "Ném đá", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Mỗi ngày có thể ném đá 1 người khiến họ bị choáng, người bị ném sẽ không thể vote, nói chuyện và dùng chức năng cho đêm sau. Có thể giết được 2 lần. Ném đá trúng sói lây nhiễm không chết."},
+            {"id": "thien_van", "name": "Thiên văn", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Có 2 lần triệu hồi. 1 lần triệu hồi trăng để ngăn sói tấn công, 1 lần triệu hồi sao chổi để giết 1 người."},
+            {"id": "ke_yeu_su_song", "name": "Kẻ yêu sự sống", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "1 lần trong 3 đêm đầu, khi kích hoạt chức năng thì tất cả các chức năng buổi đêm bị vô hiệu hoá. Nhưng không ai biết đã kích hoạt chức năng."},
+            {"id": "gia_kim", "name": "Giả kim", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-shield-halved", "color": "text-emerald-400", "bgColor": "bg-emerald-950/40 border-emerald-800/60", "badgeColor": "bg-emerald-900 text-emerald-200", "desc": "Mỗi đêm quăng 2 bình, bình đỏ và đen. Quản sẽ random bình đỏ. Bình đỏ có thể bảo vệ (người sống) hoặc hồi sinh (người chết), bình đen là giết. Trúng bình đen 2 lần không được hồi."},
+            {"id": "chan_to", "name": "Chân to", "team": "switch", "teamName": "Đổi Phe", "icon": "fa-shuffle", "color": "text-purple-400", "bgColor": "bg-purple-950/40 border-purple-800/60", "badgeColor": "bg-purple-900 text-purple-200", "desc": "Theo phe dân, nhưng vào sáng nếu không treo giàn thì theo phe sói."},
+            {"id": "bong_ma", "name": "Bóng ma", "team": "switch", "teamName": "Đổi Phe", "icon": "fa-shuffle", "color": "text-purple-400", "bgColor": "bg-purple-950/40 border-purple-800/60", "badgeColor": "bg-purple-900 text-purple-200", "desc": "Nếu bloody chết vì phe khác, bloody giết phe đó để thắng. Còn sống đến cuối ván thì thắng cùng dân."},
+            {"id": "anh_tu", "name": "Ảnh tử", "team": "switch", "teamName": "Đổi Phe", "icon": "fa-shuffle", "color": "text-purple-400", "bgColor": "bg-purple-950/40 border-purple-800/60", "badgeColor": "bg-purple-900 text-purple-200", "desc": "Đêm đầu chọn 1 người, nếu họ sống qua đêm sau ảnh tử thành dân, nếu họ chết ảnh tử sẽ được dùng bài của họ."},
+            {"id": "ban_soi", "name": "Bán sói", "team": "switch", "teamName": "Đổi Phe", "icon": "fa-shuffle", "color": "text-purple-400", "bgColor": "bg-purple-950/40 border-purple-800/60", "badgeColor": "bg-purple-900 text-purple-200", "desc": "Là dân, sói cắn trúng sẽ thành sói."},
+            {"id": "dien_vien", "name": "Diễn viên", "team": "switch", "teamName": "Đổi Phe", "icon": "fa-shuffle", "color": "text-purple-400", "bgColor": "bg-purple-950/40 border-purple-800/60", "badgeColor": "bg-purple-900 text-purple-200", "desc": "Quản sẽ cho thêm 3 lá bài và sẽ không ai biết có chức năng gì, mỗi đêm diễn viên sẽ chọn 1 lá bài để dùng chức năng. Đến đêm 3 bóc trúng lá nào sẽ nhận luôn chức năng đó."},
+            {"id": "villager", "name": "Dân Làng", "team": "villager", "teamName": "Phe Dân (Không Hint)", "icon": "fa-house-user", "color": "text-slate-300", "bgColor": "bg-slate-900/60 border-slate-700/60", "badgeColor": "bg-slate-800 text-slate-300", "desc": "Không có năng lực đặc biệt. Ban ngày lập luận và suy đoán để tìm ra Sói trà trộn."}
         ];
+
+        const DEFAULT_BY_ID = Object.fromEntries(DEFAULT_ROLES.map(r => [r.id, r]));
+        // id char của bản cũ -> char tương ứng trong danh sách mới (để ván/link cũ vẫn hiện đúng)
+        const LEGACY_ROLE_IDS = {
+            wolf_normal: 'soi', wolf_king: 'soi_dau_dan', seer: 'tri', guard: 've',
+            witch: 'thuy', hunter: 'san', jester: 'he'
+        };
+        const resolveRoleId = id => LEGACY_ROLE_IDS[id] || id;
+        const canonRole = o => JSON.stringify(Object.keys(o).sort().map(k => [k, o[k]]));
+        const isPristineDefault = r => !!r && !!DEFAULT_BY_ID[r.id] && canonRole(DEFAULT_BY_ID[r.id]) === canonRole(r);
+        // Sói nào nằm trong group sói (Sói băng thì không)
+        const inWolfGroup = r => !!r && r.team === 'werewolf' && !r.noWolfChat;
 
         class WerewolfInstaApp {
             constructor() {
@@ -515,18 +564,55 @@
 
             // Storage for Custom Characters
             loadStoredRoles() {
-                const saved = localStorage.getItem('ww_custom_roles');
-                if (!saved) return [...DEFAULT_ROLES];
+                let roles = DEFAULT_ROLES.map(r => ({ ...r })); // bản sao riêng, không đụng vào danh sách gốc
                 try {
-                    // Sửa icon lỗi cũ (fa-wolf-pack-battalion là icon Brands nên không hiện được với fa-solid)
-                    return JSON.parse(saved.replace(/fa-wolf-pack-battalion/g, 'fa-paw'));
+                    let store = null;
+                    const v2 = localStorage.getItem('ww_roles_v2');
+                    if (v2) {
+                        store = JSON.parse(v2);
+                    } else {
+                        // Chuyển từ bản cũ: chỉ giữ lại char tự tạo
+                        const old = localStorage.getItem('ww_custom_roles');
+                        if (old) {
+                            const arr = JSON.parse(old);
+                            if (Array.isArray(arr)) {
+                                store = { customs: arr.filter(r => r && r.id && String(r.id).startsWith('custom_')), overrides: {}, deleted: [] };
+                            }
+                        }
+                    }
+                    if (store) roles = this.applyRoleStore(roles, store);
                 } catch (e) {
-                    return [...DEFAULT_ROLES];
+                    console.error('Không đọc được kho char', e);
                 }
+                return roles;
+            }
+
+            applyRoleStore(roles, store) {
+                const deleted = new Set(store.deleted || []);
+                const overrides = store.overrides || {};
+                let out = roles.filter(r => !deleted.has(r.id)).map(r => overrides[r.id] || r);
+                (store.customs || []).forEach(c => {
+                    if (!c || !c.id || !c.name) return;
+                    const i = out.findIndex(x => x.id === c.id);
+                    if (i >= 0) out[i] = c; else out.push(c);
+                });
+                return out;
+            }
+
+            // Chỉ lưu phần khác với danh sách trong code => sửa code/cập nhật danh sách mặc định thì máy nào cũng tự có
+            buildRoleStore() {
+                const ids = new Set(this.roles.map(r => r.id));
+                const overrides = {};
+                this.roles.forEach(r => { if (DEFAULT_BY_ID[r.id] && !isPristineDefault(r)) overrides[r.id] = r; });
+                return {
+                    customs: this.roles.filter(r => !DEFAULT_BY_ID[r.id]),
+                    overrides,
+                    deleted: DEFAULT_ROLES.filter(d => !ids.has(d.id)).map(d => d.id)
+                };
             }
 
             saveStoredRoles() {
-                localStorage.setItem('ww_custom_roles', JSON.stringify(this.roles));
+                localStorage.setItem('ww_roles_v2', JSON.stringify(this.buildRoleStore()));
             }
 
             // ===== Mã hoá / giải mã link ván đấu (base64url, hỗ trợ tiếng Việt, gọn nhẹ) =====
@@ -549,7 +635,7 @@
                 const usedIds = new Set(game.players.map(p => p.roleId));
                 const defaultIds = new Set(DEFAULT_ROLES.map(r => r.id));
                 // Char tự tạo chỉ có trong máy quản trò -> đính kèm vào link để người chơi xem được
-                const customRoles = this.roles.filter(r => usedIds.has(r.id) && !defaultIds.has(r.id));
+                const customRoles = this.roles.filter(r => usedIds.has(r.id) && !isPristineDefault(r));
                 const compact = {
                     v: 2,
                     t: game.createdAt,
@@ -575,6 +661,13 @@
                 return data; // link kiểu cũ
             }
 
+            // Role đính kèm trong link: chỉ dùng tạm trong bộ nhớ, không ghi vào kho của máy này
+            mergeRoleInMemory(r) {
+                if (!r || !r.id) return;
+                const i = this.roles.findIndex(x => x.id === r.id);
+                if (i >= 0) this.roles[i] = r; else this.roles.push(r);
+            }
+
             // URL Encoded Game State
             parseURLState() {
                 const urlParams = new URLSearchParams(window.location.search);
@@ -586,9 +679,7 @@
                 if (personalData) {
                     try {
                         this.personal = this.decodePersonal(personalData);
-                        (this.personal.customRoles || []).forEach(r => {
-                            if (!this.roles.find(x => x.id === r.id)) this.roles.push(r);
-                        });
+                        (this.personal.customRoles || []).forEach(r => this.mergeRoleInMemory(r));
                     } catch (e) {
                         console.error("Failed to parse personal link", e);
                     }
@@ -599,9 +690,8 @@
                         const decoded = this.decodeGame(stateData);
                         if (decoded.customRoles) decoded.customRoles.forEach(r => { if (r.icon === 'fa-wolf-pack-battalion') r.icon = 'fa-paw'; });
                         // Gộp char tự tạo từ link (chỉ trong bộ nhớ, không ghi đè kho của người xem)
-                        (decoded.customRoles || []).forEach(r => {
-                            if (!this.roles.find(x => x.id === r.id)) this.roles.push(r);
-                        });
+                        (decoded.customRoles || []).forEach(r => this.mergeRoleInMemory(r));
+                        decoded.players.forEach(pl => { pl.roleId = resolveRoleId(pl.roleId); });
                         delete decoded.customRoles;
                         this.currentGame = decoded;
                     } catch (e) {
@@ -613,6 +703,7 @@
                     const localSavedGame = localStorage.getItem('ww_current_game');
                     if (localSavedGame) {
                         this.currentGame = JSON.parse(localSavedGame);
+                        (this.currentGame.players || []).forEach(pl => { pl.roleId = resolveRoleId(pl.roleId); });
                     }
                 }
 
@@ -701,10 +792,10 @@
                 const role = this.roles.find(r => r.id === player.roleId);
                 const defaultIds = new Set(DEFAULT_ROLES.map(r => r.id));
                 let allies = null;
-                if (role && role.team === 'werewolf') {
+                if (inWolfGroup(role)) {
                     allies = this.currentGame.players.filter(p => {
                         const r = this.roles.find(item => item.id === p.roleId);
-                        return r && r.team === 'werewolf';
+                        return inWolfGroup(r);
                     }).map(p => p.name);
                 }
                 const compact = {
@@ -712,7 +803,7 @@
                     n: player.name,
                     r: player.roleId,
                     a: allies,
-                    cr: (role && !defaultIds.has(role.id)) ? [role] : []
+                    cr: (role && !isPristineDefault(role)) ? [role] : []
                 };
                 return this.bytesToB64Url(new TextEncoder().encode(JSON.stringify(compact)));
             }
@@ -720,7 +811,7 @@
             decodePersonal(str) {
                 const data = JSON.parse(new TextDecoder().decode(this.b64UrlToBytes(str)));
                 if (data.v !== 3 || !data.n || !data.r) throw new Error('Link riêng không hợp lệ');
-                return { name: data.n, roleId: data.r, allies: data.a || null, customRoles: data.cr || [] };
+                return { name: data.n, roleId: resolveRoleId(data.r), allies: data.a || null, customRoles: data.cr || [] };
             }
 
             buildPersonalLink(player) {
@@ -822,6 +913,107 @@
                 footer.appendChild(closeBtn);
                 panel.appendChild(footer);
 
+                document.body.appendChild(overlay);
+            }
+
+            // ===== SAO LƯU / KHÔI PHỤC DANH SÁCH CHAR =====
+            exportRolesCode() {
+                const payload = { app: 'ww-roles', v: 2, ...this.buildRoleStore() };
+                return 'WWROLES:' + this.bytesToB64Url(new TextEncoder().encode(JSON.stringify(payload)));
+            }
+
+            importRolesCode(code) {
+                const clean = code.trim().replace(/^WWROLES:/, '').replace(/\s+/g, '');
+                const json = new TextDecoder().decode(this.b64UrlToBytes(clean)).replace(/fa-wolf-pack-battalion/g, 'fa-paw');
+                const data = JSON.parse(json);
+                if (!data || data.app !== 'ww-roles') throw new Error('Mã sao lưu không hợp lệ');
+                let count = 0;
+                if (data.v === 2) {
+                    const store = {
+                        customs: Array.isArray(data.customs) ? data.customs : [],
+                        overrides: data.overrides || {},
+                        deleted: Array.isArray(data.deleted) ? data.deleted : []
+                    };
+                    this.roles = this.applyRoleStore(this.roles, store);
+                    count = store.customs.length + Object.keys(store.overrides).length;
+                } else if (Array.isArray(data.roles)) {
+                    // Mã sao lưu bản cũ: chỉ lấy char tự tạo
+                    const customs = data.roles.filter(r => r && r.id && r.name && String(r.id).startsWith('custom_'));
+                    this.roles = this.applyRoleStore(this.roles, { customs });
+                    count = customs.length;
+                } else {
+                    throw new Error('Mã sao lưu không hợp lệ');
+                }
+                this.saveStoredRoles();
+                this.renderCodex();
+                this.renderCustomCharsList();
+                this.renderSetupRolePicker();
+                return count;
+            }
+
+            openBackupModal(mode) {
+                const old = document.getElementById('backup-modal');
+                if (old) old.remove();
+
+                const overlay = document.createElement('div');
+                overlay.id = 'backup-modal';
+                overlay.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:12px;';
+                const panel = document.createElement('div');
+                panel.style.cssText = 'background:#0f172a;border:1px solid #334155;border-radius:16px;padding:16px;max-width:480px;width:100%;color:#e2e8f0;font-size:13px;';
+                overlay.appendChild(panel);
+
+                const title = document.createElement('p');
+                title.style.cssText = 'font-weight:800;font-size:15px;margin-bottom:6px;color:#fbbf24;';
+                panel.appendChild(title);
+                const hint = document.createElement('p');
+                hint.style.cssText = 'color:#94a3b8;margin-bottom:8px;line-height:1.4;';
+                panel.appendChild(hint);
+                const ta = document.createElement('textarea');
+                ta.rows = 6;
+                ta.style.cssText = 'width:100%;background:#020617;color:#e2e8f0;border:1px solid #334155;border-radius:10px;padding:8px;font-size:12px;word-break:break-all;';
+                panel.appendChild(ta);
+                const footer = document.createElement('div');
+                footer.style.cssText = 'display:flex;gap:8px;margin-top:10px;justify-content:flex-end;';
+                panel.appendChild(footer);
+
+                const mkBtn = (label, bg) => {
+                    const b = document.createElement('button');
+                    b.textContent = label;
+                    b.style.cssText = `background:${bg};color:#fff;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-size:12px;`;
+                    return b;
+                };
+
+                if (mode === 'export') {
+                    title.textContent = '💾 Sao lưu danh sách char';
+                    hint.textContent = 'Mã này chỉ chứa char bạn tự thêm / đã chỉnh sửa (danh sách mặc định đã có sẵn trong web). Hãy lưu vào ghi chú hoặc tin nhắn "Cloud của tôi"; cần khôi phục thì bấm Khôi phục và dán lại.';
+                    ta.readOnly = true;
+                    ta.value = this.exportRolesCode();
+                    ta.addEventListener('click', () => { ta.select(); ta.setSelectionRange(0, ta.value.length); });
+                    const copyBtn = mkBtn('Copy mã', '#4f46e5');
+                    copyBtn.onclick = () => this.copyText(ta.value).then(ok => {
+                        if (ok) { copyBtn.textContent = '✓ Đã copy'; copyBtn.style.background = '#059669'; }
+                        else { ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length); alert('Trình duyệt chặn copy tự động. Hãy giữ vào ô mã rồi chọn Copy.'); }
+                    });
+                    footer.appendChild(copyBtn);
+                } else {
+                    title.textContent = '📥 Khôi phục danh sách char';
+                    hint.textContent = 'Dán mã sao lưu (bắt đầu bằng WWROLES:) vào ô bên dưới. Char trùng sẽ được ghi đè, char mới sẽ được thêm vào.';
+                    ta.placeholder = 'WWROLES:...';
+                    const okBtn = mkBtn('Khôi phục', '#059669');
+                    okBtn.onclick = () => {
+                        try {
+                            const n = this.importRolesCode(ta.value);
+                            alert('✅ Đã khôi phục ' + n + ' char tự tạo / chỉnh sửa!');
+                            overlay.remove();
+                        } catch (e) {
+                            alert('❌ Mã sao lưu không hợp lệ. Hãy kiểm tra lại xem đã dán đủ và đúng chưa.');
+                        }
+                    };
+                    footer.appendChild(okBtn);
+                }
+                const closeBtn = mkBtn('Đóng', '#7f1d1d');
+                closeBtn.onclick = () => overlay.remove();
+                footer.appendChild(closeBtn);
                 document.body.appendChild(overlay);
             }
 
@@ -938,10 +1130,10 @@
                 const roleObj = this.roles.find(r => r.id === player.roleId) || DEFAULT_ROLES[DEFAULT_ROLES.length - 1];
 
                 let allies = null;
-                if (roleObj.team === 'werewolf') {
+                if (inWolfGroup(roleObj)) {
                     allies = this.currentGame.players.filter(p => {
                         const r = this.roles.find(item => item.id === p.roleId);
-                        return r && r.team === 'werewolf';
+                        return inWolfGroup(r);
                     }).map(p => p.name);
                 }
                 this.showCard(player.name, roleObj, allies);
@@ -1101,24 +1293,41 @@
 
             renderSetupRolePicker() {
                 const container = document.getElementById('setup-roles-picker');
-                container.innerHTML = this.roles.map(r => {
-                    const count = this.selectedRolesInSetup[r.id] || 0;
-                    return `
-                        <div class="bg-black/50 border border-slate-800 rounded-xl p-2.5 flex justify-between items-center">
-                            <div class="flex items-center gap-2">
-                                <div class="w-7 h-7 rounded-lg ${r.bgColor} flex items-center justify-center ${r.color} text-xs">
+                const q = ((document.getElementById('setup-role-search') || {}).value || '').trim().toLowerCase();
+                const list = this.roles.filter(r => !q || r.name.toLowerCase().includes(q) || (r.teamName || '').toLowerCase().includes(q));
+
+                // Gom theo phe, giữ thứ tự xuất hiện
+                const groups = new Map();
+                list.forEach(r => {
+                    const key = r.teamName || 'Khác';
+                    if (!groups.has(key)) groups.set(key, []);
+                    groups.get(key).push(r);
+                });
+
+                let html = '';
+                groups.forEach((items, groupName) => {
+                    html += `<div class="sm:col-span-2 text-[11px] font-bold uppercase tracking-wider text-gothic-gold/80 pt-2">${groupName} (${items.length})</div>`;
+                    html += items.map(r => {
+                        const count = this.selectedRolesInSetup[r.id] || 0;
+                        return `
+                        <div class="bg-black/50 border ${count > 0 ? 'border-gothic-gold/70' : 'border-slate-800'} rounded-xl p-2.5 flex justify-between items-center">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <div class="w-7 h-7 rounded-lg ${r.bgColor} flex items-center justify-center ${r.color} text-xs shrink-0">
                                     <i class="fa-solid ${r.icon || 'fa-user'}"></i>
                                 </div>
-                                <span class="text-xs font-bold text-slate-200">${r.name}</span>
+                                <span class="text-xs font-bold text-slate-200 truncate">${r.name}</span>
                             </div>
-                            <div class="flex items-center gap-1.5">
+                            <div class="flex items-center gap-1.5 shrink-0">
                                 <button onclick="app.adjustSetupRole('${r.id}', -1)" class="w-6 h-6 rounded bg-slate-800 text-slate-200 font-bold text-xs">-</button>
                                 <span class="w-4 text-center text-xs font-bold text-gothic-gold">${count}</span>
                                 <button onclick="app.adjustSetupRole('${r.id}', 1)" class="w-6 h-6 rounded bg-slate-800 text-slate-200 font-bold text-xs">+</button>
                             </div>
-                        </div>
-                    `;
-                }).join('');
+                        </div>`;
+                    }).join('');
+                });
+                const keepScroll = container.scrollTop;
+                container.innerHTML = html || '<div class="sm:col-span-2 text-center text-xs text-slate-400 py-4">Không tìm thấy char nào.</div>';
+                container.scrollTop = keepScroll; // giữ vị trí cuộn khi bấm +/-
 
                 this.updateSetupCounts();
             }
@@ -1254,13 +1463,18 @@
                 let color = 'text-sky-400';
                 let bgColor = 'bg-sky-950/40 border-sky-800/60';
 
-                if (team === 'werewolf') {
-                    teamName = 'Phe Ma Sói';
+                if (team === 'switch') {
+                    teamName = 'Đổi Phe';
+                    badgeColor = 'bg-purple-900 text-purple-200';
+                    color = 'text-purple-400';
+                    bgColor = 'bg-purple-950/40 border-purple-800/60';
+                } else if (team === 'werewolf') {
+                    teamName = 'Phe Sói';
                     badgeColor = 'bg-rose-900 text-rose-200';
                     color = 'text-rose-500';
                     bgColor = 'bg-rose-950/40 border-rose-800/60';
                 } else if (team === 'neutral') {
-                    teamName = 'Phe Thứ 3';
+                    teamName = 'Phe 3';
                     badgeColor = 'bg-yellow-900 text-yellow-200';
                     color = 'text-yellow-400';
                     bgColor = 'bg-yellow-950/40 border-yellow-800/60';
@@ -1269,7 +1483,10 @@
                 if (this.editingCharId) {
                     const idx = this.roles.findIndex(r => r.id === this.editingCharId);
                     if (idx !== -1) {
-                        this.roles[idx] = { ...this.roles[idx], name, team, teamName, desc, badgeColor, color, bgColor };
+                        const oldRole = this.roles[idx];
+                        this.roles[idx] = (oldRole.team === team)
+                            ? { ...oldRole, name, desc } // không đổi phe: giữ nguyên tên phe/màu/icon
+                            : { ...oldRole, name, team, teamName, desc, badgeColor, color, bgColor };
                     }
                 } else {
                     const newRole = {
